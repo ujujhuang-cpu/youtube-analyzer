@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 業配分析排程系統</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #ffe5e5 0%, #fff 50%, #ffe5e5 100%);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        .card h2 {
+            font-size: 1.5rem;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-primary:hover { background: #b91c1c; }
+        .btn-success {
+            background: #16a34a;
+            color: white;
+        }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover { background: #dc2626; }
+        .info-box {
+            background: #eff6ff;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: #1e40af;
+        }
+        .success-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 1rem;
+            border-radius: 8px;
+            color: #166534;
+            margin-bottom: 1rem;
+        }
+        .error-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 1rem;
+            border-radius: 8px;
+            color: #991b1b;
+            margin-bottom: 1rem;
+        }
+        .schedule-list {
+            margin-top: 1rem;
+        }
+        .schedule-item {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .schedule-info {
+            flex: 1;
+        }
+        .schedule-info h4 {
+            font-size: 1rem;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+        .schedule-info p {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .schedule-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            width: auto;
+        }
+        .helper {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        .badge-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .badge-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 YouTube 業配分析排程系統</h1>
+            <p class="subtitle">自動化追蹤頻道業配，定期發送報告到信箱</p>
+        </div>
+
+        <div id="message" style="display: none;"></div>
+
+        <div class="grid">
+            <!-- 新增排程 -->
+            <div class="card">
+                <h2>⚙️ 新增監控排程</h2>
+                
+                <div class="form-group">
+                    <label>排程名稱</label>
+                    <input type="text" id="scheduleName" placeholder="例如：科技頻道監控">
+                </div>
+
+                <div class="form-group">
+                    <label>YouTube Data API 金鑰</label>
+                    <input type="password" id="apiKey" placeholder="請輸入你的 API 金鑰">
+                    <p class="helper">需要 API 金鑰？請至 <a href="https://console.cloud.google.com/" target="_blank" style="color: #2563eb;">Google Cloud Console</a> 建立</p>
+                </div>
+
+                <div class="form-group">
+                    <label>監控的頻道（每行一個）</label>
+                    <textarea id="channels" rows="5" placeholder="志祺七七&#10;阿滴英文&#10;理科太太"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>搜尋期間（月）</label>
+                    <select id="months">
+                        <option value="1">1 個月</option>
+                        <option value="3">3 個月</option>
+                        <option value="6" selected>6 個月</option>
+                        <option value="12">12 個月</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>報告頻率</label>
+                    <select id="frequency">
+                        <option value="daily">每日</option>
+                        <option value="weekly" selected>每週</option>
+                        <option value="monthly">每月</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>發送時間</label>
+                    <select id="sendTime">
+                        <option value="09:00">上午 9:00</option>
+                        <option value="12:00">中午 12:00</option>
+                        <option value="15:00">下午 3:00</option>
+                        <option value="18:00">下午 6:00</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>收件郵箱</label>
+                    <input type="email" id="email" placeholder="your@email.com">
+                </div>
+
+                <button class="btn btn-primary" onclick="createSchedule()">建立排程</button>
+
+                <div class="info-box">
+                    💡 提示：排程建立後會自動執行，首次報告將在下一個排程時間發送
+                </div>
+            </div>
+
+            <!-- 我的排程 -->
+            <div class="card">
+                <h2>📋 我的排程列表</h2>
+                
+                <div id="scheduleList" class="schedule-list">
+                    <p style="color: #6b7280; text-align: center; padding: 2rem;">尚未建立任何排程</p>
+                </div>
+
+                <button class="btn btn-success" style="margin-top: 1rem;" onclick="loadSchedules()">重新整理</button>
+            </div>
+        </div>
+
+        <!-- 說明 -->
+        <div class="card">
+            <h2>📚 使用說明</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                <div>
+                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #dc2626;">🔍 自動監控</h3>
+                    <p style="font-size: 0.875rem; color: #6b7280;">系統會按照設定的頻率自動分析頻道的業配連結</p>
+                </div>
+                <div>
+                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #dc2626;">📧 郵件報告</h3>
+                    <p style="font-size: 0.875rem; color: #6b7280;">分析完成後自動發送 CSV 報告到你的郵箱</p>
+                </div>
+                <div>
+                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #dc2626;">⚙️ 隨時調整</h3>
+                    <p style="font-size: 0.875rem; color: #6b7280;">可以隨時暫停、恢復或刪除排程</p>
+                </div>
+                <div>
+                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #dc2626;">🔒 安全保護</h3>
+                    <p style="font-size: 0.875rem; color: #6b7280;">API 金鑰和數據都會加密儲存</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 這裡需要連接到後端 API
+        const API_URL = 'http://localhost:3000/api'; // 實際部署時需要改成你的伺服器網址
+
+        function showMessage(message, type = 'success') {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = type === 'success' ? 'success-box' : 'error-box';
+            msgDiv.textContent = message;
+            msgDiv.style.display = 'block';
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function createSchedule() {
+            const schedule = {
+                name: document.getElementById('scheduleName').value.trim(),
+                apiKey: document.getElementById('apiKey').value.trim(),
+                channels: document.getElementById('channels').value.split('\n').filter(c => c.trim()).map(c => c.trim()),
+                months: parseInt(document.getElementById('months').value),
+                frequency: document.getElementById('frequency').value,
+                sendTime: document.getElementById('sendTime').value,
+                email: document.getElementById('email').value.trim()
+            };
+
+            // 驗證
+            if (!schedule.name) {
+                showMessage('請輸入排程名稱', 'error');
+                return;
+            }
+            if (!schedule.apiKey) {
+                showMessage('請輸入 API 金鑰', 'error');
+                return;
+            }
+            if (schedule.channels.length === 0) {
+                showMessage('請至少輸入一個頻道', 'error');
+                return;
+            }
+            if (!schedule.email) {
+                showMessage('請輸入郵箱地址', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/schedules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(schedule)
+                });
+
+                if (response.ok) {
+                    showMessage('排程建立成功！');
+                    // 清空表單
+                    document.getElementById('scheduleName').value = '';
+                    document.getElementById('channels').value = '';
+                    document.getElementById('email').value = '';
+                    loadSchedules();
+                } else {
+                    const error = await response.json();
+                    showMessage(error.message || '建立失敗', 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤：' + error.message, 'error');
+            }
+        }
+
+        async function loadSchedules() {
+            try {
+                const response = await fetch(`${API_URL}/schedules`);
+                const schedules = await response.json();
+
+                const listDiv = document.getElementById('scheduleList');
+                
+                if (schedules.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">尚未建立任何排程</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = schedules.map(s => `
+                    <div class="schedule-item">
+                        <div class="schedule-info">
+                            <h4>${s.name}</h4>
+                            <p>頻道數量：${s.channels.length} | 頻率：${getFrequencyText(s.frequency)} | 收件：${s.email}</p>
+                            <span class="badge ${s.active ? 'badge-active' : 'badge-inactive'}">
+                                ${s.active ? '✓ 執行中' : '暫停'}
+                            </span>
+                        </div>
+                        <div class="schedule-actions">
+                            <button class="btn btn-small ${s.active ? 'btn-danger' : 'btn-success'}" 
+                                    onclick="toggleSchedule('${s.id}', ${s.active})">
+                                ${s.active ? '暫停' : '啟用'}
+                            </button>
+                            <button class="btn btn-small btn-danger" onclick="deleteSchedule('${s.id}')">刪除</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showMessage('載入排程失敗：' + error.message, 'error');
+            }
+        }
+
+        function getFrequencyText(freq) {
+            const map = { daily: '每日', weekly: '每週', monthly: '每月' };
+            return map[freq] || freq;
+        }
+
+        async function toggleSchedule(id, currentStatus) {
+            try {
+                const response = await fetch(`${API_URL}/schedules/${id}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ active: !currentStatus })
+                });
+
+                if (response.ok) {
+                    showMessage(currentStatus ? '已暫停排程' : '已啟用排程');
+                    loadSchedules();
+                } else {
+                    showMessage('操作失敗', 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤：' + error.message, 'error');
+            }
+        }
+
+        async function deleteSchedule(id) {
+            if (!confirm('確定要刪除此排程嗎？')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/schedules/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showMessage('已刪除排程');
+                    loadSchedules();
+                } else {
+                    showMessage('刪除失敗', 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤：' + error.message, 'error');
+            }
+        }
+
+        // 頁面載入時載入排程
+        window.addEventListener('load', loadSchedules);
+    </script>
+</body>
+</html>
