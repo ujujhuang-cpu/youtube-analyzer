@@ -307,7 +307,19 @@ def delete_schedule(schedule_id):
         pass
     
     return jsonify({'message': '刪除成功'})
-
+    
+@app.route('/api/schedules/<schedule_id>/run', methods=['POST'])
+def run_now(schedule_id):
+    """立即執行分析任務"""
+    # 這裡我們使用背景執行，避免前端網頁卡住
+    scheduler.add_job(
+        func=run_analysis,
+        trigger='date',  # 'date' 觸發器代表只執行一次，時間為現在
+        args=[schedule_id],
+        id=f"once_{schedule_id}_{datetime.now().timestamp()}"
+    )
+    return jsonify({'message': '任務已啟動，分析完成後將寄送郵件報告！'})
+    
 def setup_schedule_job(schedule):
     """設定排程任務"""
     hour, minute = schedule['sendTime'].split(':')
