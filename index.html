@@ -225,12 +225,10 @@
 
                 <div class="form-group">
                     <label>發送時間</label>
-                    <select id="sendTime">
-                        <option value="09:00">上午 9:00</option>
-                        <option value="12:00">中午 12:00</option>
-                        <option value="15:00">下午 3:00</option>
-                        <option value="18:00">下午 6:00</option>
-                    </select>
+                    <div class="form-group">
+                        <label>自訂發送時間</label>
+                        <input type="time" id="sendTime" value="09:00">
+                    <p class="helper">設定每日/每週/每月具體的發送時刻</p>
                 </div>
 
                 <div class="form-group">
@@ -371,6 +369,19 @@
                             </span>
                         </div>
                         <div class="schedule-actions">
+                            async function runNow(id) {
+                                if (!confirm('確定要立即執行分析並發送報告嗎？\n(根據影片數量，可能需要幾分鐘時間)')) return;
+    
+                                try {
+                                    const response = await fetch(`${API_URL}/schedules/${id}/run`, {
+                                        method: 'POST'
+                                    });
+                                    const result = await response.json();
+                                    showMessage(result.message);
+                                } catch (error) {
+                                    showMessage('啟動失敗：' + error.message, 'error');
+                                }
+                            }
                             <button class="btn btn-small ${s.active ? 'btn-danger' : 'btn-success'}" 
                                     onclick="toggleSchedule('${s.id}', ${s.active})">
                                 ${s.active ? '暫停' : '啟用'}
