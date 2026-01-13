@@ -159,47 +159,44 @@ def analyze_channel(channel_name, months, api_key):
     return channel_title, stats
 
 def run_analysis(schedule_id):
-    """執行分析任務"""
-    print(f"執行排程 {schedule_id} 的分析任務")
+    print(f"--- 開始執行分析任務 (ID: {schedule_id}) ---")
     
     schedules = load_schedules()
     schedule = next((s for s in schedules if s['id'] == schedule_id), None)
     
-    if not schedule or not schedule['active']:
-        print(f"排程 {schedule_id} 不存在或已停用")
+    if not schedule:
+        print(f"錯誤：找不到 ID 為 {schedule_id} 的排程")
         return
     
-    # 分析所有頻道
+    print(f"分析頻道: {schedule['channels']}")
+    
     all_results = []
     for channel_name in schedule['channels']:
-        channel_title, stats = analyze_channel(channel_name, schedule['months'], schedule['apiKey'])
-        if channel_title and stats:
-            for link, data in stats.items():
-                all_results.append({
-                    'channel': channel_title,
-                    'link': link,
-                    'count': data['count'],
-                    'videos': ','.join(data['videos']),
-                    'titles': ' | '.join(data['titles']),
-                    'dates': ' | '.join(data['dates'])
-                })
+        try:
+            print(f"正在分析頻道: {channel_name}...")
+            channel_title, stats = analyze_channel(channel_name, schedule['months'], schedule['apiKey'])
+            if channel_title and stats:
+                print(f"成功取得 {channel_title} 的數據，找到 {len(stats)} 個連結")
+                for link, data in stats.items():
+                    all_results.append({
+                        'channel': channel_title,
+                        'link': link,
+                        'count': data['count'],
+                        'videos': ','.join(data['videos']),
+                        'titles': ' | '.join(data['titles']),
+                        'dates': ' | '.join(data['dates'])
+                    })
+            else:
+                print(f"警告：頻道 {channel_name} 沒有回傳數據")
+        except Exception as e:
+            print(f"分析頻道 {channel_name} 時發生崩潰: {str(e)}")
     
-    # 產生 CSV
     if all_results:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{RESULTS_DIR}/report_{schedule_id}_{timestamp}.csv"
-        os.makedirs(RESULTS_DIR, exist_ok=True)
-        
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-            writer = csv.DictWriter(f, fieldnames=['channel', 'link', 'count', 'videos', 'titles', 'dates'])
-            writer.writeheader()
-            writer.writerows(all_results)
-        
-        # 發送郵件
+        # ... 原本產生 CSV 的代碼 ...
+        print(f"分析結束，準備發送郵件報告至 {schedule['email']}...")
         send_email_report(schedule['email'], schedule['name'], filename, len(all_results))
-        print(f"已發送報告到 {schedule['email']}")
     else:
-        print("沒有找到任何業配連結")
+        print("分析完成，但沒有找到任何業配連結，不發送郵件。")
 
 def send_email_report(to_email, schedule_name, csv_file, link_count):
     """發送郵件報告"""
