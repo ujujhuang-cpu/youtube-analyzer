@@ -280,168 +280,157 @@
     </div>
 
     <script>
-        // 這裡需要連接到後端 API
-        const API_URL = 'https://youtube-analyzer-backend-4rg7.onrender.com/api'; // 實際部署時需要改成你的伺服器網址
+    // 1. 設定 API 網址 (請確認網址正確)
+    const API_URL = 'https://youtube-analyzer-backend-4rg7.onrender.com/api';
 
-        function showMessage(message, type = 'success') {
-            const msgDiv = document.getElementById('message');
-            msgDiv.className = type === 'success' ? 'success-box' : 'error-box';
-            msgDiv.textContent = message;
-            msgDiv.style.display = 'block';
-            setTimeout(() => {
-                msgDiv.style.display = 'none';
-            }, 5000);
+    // 2. 顯示訊息提示
+    function showMessage(message, type = 'success') {
+        const msgDiv = document.getElementById('message');
+        if (!msgDiv) return;
+        msgDiv.className = type === 'success' ? 'success-box' : 'error-box';
+        msgDiv.textContent = message;
+        msgDiv.style.display = 'block';
+        setTimeout(() => {
+            msgDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    // 3. 建立排程
+    async function createSchedule() {
+        const nameField = document.getElementById('scheduleName');
+        const apiKeyField = document.getElementById('apiKey');
+        const channelsField = document.getElementById('channels');
+        const emailField = document.getElementById('email');
+
+        const schedule = {
+            name: nameField.value.trim(),
+            apiKey: apiKeyField.value.trim(),
+            channels: channelsField.value.split('\n').filter(c => c.trim()).map(c => c.trim()),
+            months: parseInt(document.getElementById('months').value),
+            frequency: document.getElementById('frequency').value,
+            sendTime: document.getElementById('sendTime').value,
+            email: emailField.value.trim()
+        };
+
+        if (!schedule.name || !schedule.apiKey || schedule.channels.length === 0 || !schedule.email) {
+            showMessage('請填寫所有必填欄位', 'error');
+            return;
         }
 
-        async function createSchedule() {
-            const schedule = {
-                name: document.getElementById('scheduleName').value.trim(),
-                apiKey: document.getElementById('apiKey').value.trim(),
-                channels: document.getElementById('channels').value.split('\n').filter(c => c.trim()).map(c => c.trim()),
-                months: parseInt(document.getElementById('months').value),
-                frequency: document.getElementById('frequency').value,
-                sendTime: document.getElementById('sendTime').value,
-                email: document.getElementById('email').value.trim()
-            };
+        try {
+            const response = await fetch(`${API_URL}/schedules`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(schedule)
+            });
 
-            // 驗證
-            if (!schedule.name) {
-                showMessage('請輸入排程名稱', 'error');
-                return;
+            if (response.ok) {
+                showMessage('排程建立成功！');
+                // 清空部分表單
+                nameField.value = '';
+                channelsField.value = '';
+                loadSchedules();
+            } else {
+                const error = await response.json();
+                showMessage(error.message || '建立失敗', 'error');
             }
-            if (!schedule.apiKey) {
-                showMessage('請輸入 API 金鑰', 'error');
-                return;
-            }
-            if (schedule.channels.length === 0) {
-                showMessage('請至少輸入一個頻道', 'error');
-                return;
-            }
-            if (!schedule.email) {
-                showMessage('請輸入郵箱地址', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}/schedules`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(schedule)
-                });
-
-                if (response.ok) {
-                    showMessage('排程建立成功！');
-                    // 清空表單
-                    document.getElementById('scheduleName').value = '';
-                    document.getElementById('channels').value = '';
-                    document.getElementById('email').value = '';
-                    loadSchedules();
-                } else {
-                    const error = await response.json();
-                    showMessage(error.message || '建立失敗', 'error');
-                }
-            } catch (error) {
-                showMessage('網路錯誤：' + error.message, 'error');
-            }
+        } catch (error) {
+            showMessage('連線失敗：' + error.message, 'error');
         }
+    }
 
-        async function loadSchedules() {
-            try {
-                const response = await fetch(`${API_URL}/schedules`);
-                const schedules = await response.json();
+    // 4. 載入排程列表
+    async function loadSchedules() {
+        const listDiv = document.getElementById('scheduleList');
+        if (!listDiv) return;
 
-                const listDiv = document.getElementById('scheduleList');
-                
-                if (schedules.length === 0) {
-                    listDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">尚未建立任何排程</p>';
-                    return;
-                }
+        try {
+            const response = await fetch(`${API_URL}/schedules`);
+            const schedules = await response.json();
 
-                listDiv.innerHTML = schedules.map(s => `
-                    <div class="schedule-item">
-                        <div class="schedule-info">
-                            <h4>${s.name}</h4>
-                            <p>頻道數量：${s.channels.length} | 頻率：${getFrequencyText(s.frequency)} | 收件：${s.email}</p>
-                            <span class="badge ${s.active ? 'badge-active' : 'badge-inactive'}">
-                                ${s.active ? '✓ 執行中' : '暫停'}
-                            </span>
-                        </div>
-                        <div class="schedule-actions">
-                            async function runNow(id) {
-                                if (!confirm('確定要立即執行分析並發送報告嗎？\n(根據影片數量，可能需要幾分鐘時間)')) return;
-    
-                                try {
-                                    const response = await fetch(`${API_URL}/schedules/${id}/run`, {
-                                        method: 'POST'
-                                    });
-                                    const result = await response.json();
-                                    showMessage(result.message);
-                                } catch (error) {
-                                    showMessage('啟動失敗：' + error.message, 'error');
-                                }
-                            }
-                            <button class="btn btn-small ${s.active ? 'btn-danger' : 'btn-success'}" 
-                                    onclick="toggleSchedule('${s.id}', ${s.active})">
-                                ${s.active ? '暫停' : '啟用'}
-                            </button>
-                            <button class="btn btn-small btn-danger" onclick="deleteSchedule('${s.id}')">刪除</button>
-                        </div>
+            if (schedules.length === 0) {
+                listDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">尚未建立任何排程</p>';
+                return;
+            }
+
+            // 注意：這裡的反引號 ` 與引號 ' " 必須完全對應
+            listDiv.innerHTML = schedules.map(s => `
+                <div class="schedule-item">
+                    <div class="schedule-info">
+                        <h4>${s.name}</h4>
+                        <p>頻道數：${s.channels.length} | 時間：${s.sendTime} | 收件：${s.email}</p>
+                        <span class="badge ${s.active ? 'badge-active' : 'badge-inactive'}">
+                            ${s.active ? '✓ 執行中' : '暫停'}
+                        </span>
                     </div>
-                `).join('');
-            } catch (error) {
-                showMessage('載入排程失敗：' + error.message, 'error');
+                    <div class="schedule-actions">
+                        <button class="btn btn-small btn-primary" onclick="runNow('${s.id}')">立即分析</button>
+                        <button class="btn btn-small ${s.active ? 'btn-danger' : 'btn-success'}" 
+                                onclick="toggleSchedule('${s.id}', ${s.active})">
+                            ${s.active ? '暫停' : '啟用'}
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deleteSchedule('${s.id}')">刪除</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            listDiv.innerHTML = '<p style="color: #ef4444; text-align: center;">伺服器連線中，請稍候...</p>';
+        }
+    }
+
+    // 5. 立即分析
+    async function runNow(id) {
+        if (!confirm('確定要立即執行分析嗎？\n(分析完成後會寄送 CSV 報告至您的信箱)')) return;
+        
+        showMessage('分析任務已在後端啟動，請留意您的信箱！');
+        try {
+            const response = await fetch(`${API_URL}/schedules/${id}/run`, { method: 'POST' });
+            const result = await response.json();
+            showMessage(result.message);
+        } catch (error) {
+            showMessage('執行失敗：' + error.message, 'error');
+        }
+    }
+
+    // 6. 啟用/暫停
+    async function toggleSchedule(id, currentStatus) {
+        try {
+            const response = await fetch(`${API_URL}/schedules/${id}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: !currentStatus })
+            });
+            if (response.ok) {
+                showMessage(currentStatus ? '已暫停' : '已啟用');
+                loadSchedules();
             }
+        } catch (error) {
+            showMessage('切換失敗', 'error');
         }
+    }
 
-        function getFrequencyText(freq) {
-            const map = { daily: '每日', weekly: '每週', monthly: '每月' };
-            return map[freq] || freq;
-        }
-
-        async function toggleSchedule(id, currentStatus) {
-            try {
-                const response = await fetch(`${API_URL}/schedules/${id}/toggle`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ active: !currentStatus })
-                });
-
-                if (response.ok) {
-                    showMessage(currentStatus ? '已暫停排程' : '已啟用排程');
-                    loadSchedules();
-                } else {
-                    showMessage('操作失敗', 'error');
-                }
-            } catch (error) {
-                showMessage('網路錯誤：' + error.message, 'error');
+    // 7. 刪除
+    async function deleteSchedule(id) {
+        if (!confirm('確定要刪除此排程嗎？')) return;
+        try {
+            const response = await fetch(`${API_URL}/schedules/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                showMessage('已刪除');
+                loadSchedules();
             }
+        } catch (error) {
+            showMessage('刪除失敗', 'error');
         }
+    }
 
-        async function deleteSchedule(id) {
-            if (!confirm('確定要刪除此排程嗎？')) return;
+    // 8. 輔助函數
+    function getFrequencyText(freq) {
+        const map = { daily: '每日', weekly: '每週', monthly: '每月' };
+        return map[freq] || freq;
+    }
 
-            try {
-                const response = await fetch(`${API_URL}/schedules/${id}`, {
-                    method: 'DELETE'
-                });
-
-                if (response.ok) {
-                    showMessage('已刪除排程');
-                    loadSchedules();
-                } else {
-                    showMessage('刪除失敗', 'error');
-                }
-            } catch (error) {
-                showMessage('網路錯誤：' + error.message, 'error');
-            }
-        }
-
-        // 頁面載入時載入排程
-        window.addEventListener('load', loadSchedules);
-    </script>
+    // 頁面啟動
+    window.addEventListener('load', loadSchedules);
+</script>
 </body>
 </html>
